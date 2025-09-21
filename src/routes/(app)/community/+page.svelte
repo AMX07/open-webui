@@ -1,5 +1,6 @@
 <script lang="ts">
         import { goto } from '$app/navigation';
+        import { page } from '$app/stores';
         import { getContext, onMount } from 'svelte';
 
         import dayjs from 'dayjs';
@@ -9,8 +10,7 @@
         dayjs.extend(relativeTime);
 
         import {
-                getCommunityFeed,
-                createCommunityPost,
+                getCommunityUserPage,
                 getCommunityPostComments,
                 createCommunityComment,
                 deleteCommunityComment,
@@ -19,7 +19,8 @@
                 followCommunityUser,
                 unfollowCommunityUser,
                 type CommunityPost,
-                type CommunityComment
+                type CommunityComment,
+                type CommunityUserProfile
         } from '$lib/apis/community';
 
         import { mobile, showSidebar, showArchivedChats, user } from '$lib/stores';
@@ -29,7 +30,6 @@
         import Tooltip from '$lib/components/common/Tooltip.svelte';
         import Heart from '$lib/components/icons/Heart.svelte';
         import ChatBubble from '$lib/components/icons/ChatBubble.svelte';
-        import UserPlusSolid from '$lib/components/icons/UserPlusSolid.svelte';
         import Spinner from '$lib/components/common/Spinner.svelte';
 
         const i18n = getContext('i18n');
@@ -47,11 +47,8 @@
         let loading = false;
         let posts: CommunityPost[] = [];
         let totalPosts = 0;
+        let profile: CommunityUserProfile | null = null;
         let page = 1;
-
-        let newPostTitle = '';
-        let newPostContent = '';
-        let creatingPost = false;
 
         let commentState: Record<string, CommentState> = {};
 
@@ -75,35 +72,48 @@
                 return localStorage.getItem('token');
         };
 
-        const loadFeed = async () => {
+        const loadUserPage = async (pageNumber: number = 1) => {
                 const token = ensureToken();
                 if (!token) {
                         toast.error($i18n.t('You need to sign in to use the community.'));
                         return;
                 }
 
-                page = 1;
+                const userId = $page.params.userId;
+                if (!userId) {
+                        return;
+                }
+
                 loading = true;
                 try {
-                        const feed = await getCommunityFeed(token, { page, limit: PAGE_SIZE });
-                        posts = feed.posts;
-                        totalPosts = feed.total;
+                        const response = await getCommunityUserPage(token, userId, {
+                                page: pageNumber,
+                                limit: PAGE_SIZE
+                        });
 
-                        const nextState: Record<string, CommentState> = {};
-                        for (const post of posts) {
-                                nextState[post.id] = commentState[post.id] ?? {
-                                        comments: [],
-                                        visible: false,
-                                        loading: false,
-                                        input: '',
-                                        submitting: false
-                                };
+                        profile = response.profile;
+                        totalPosts = response.posts.total;
+
+                        if (pageNumber === 1) {
+                                posts = response.posts.posts;
+                                commentState = {};
+                                for (const post of posts) {
+                                        resetCommentState(post.id);
+                                }
+                                page = 1;
+                        } else {
+                                posts = [...posts, ...response.posts.posts];
+                                for (const post of response.posts.posts) {
+                                        if (!commentState[post.id]) {
+                                                resetCommentState(post.id);
+                                        }
+                                }
+                                page = pageNumber;
                         }
-                        commentState = nextState;
                 } catch (error) {
                         console.error(error);
                         toast.error(
-                                typeof error === 'string' ? error : $i18n.t('Failed to load community posts.')
+                                typeof error === 'string' ? error : $i18n.t('Failed to load user profile.')
                         );
                 } finally {
                         loading = false;
@@ -111,45 +121,8 @@
         };
 
         onMount(async () => {
-                await loadFeed();
+                await loadUserPage(1);
         });
-
-        const submitPost = async () => {
-                if (!newPostContent.trim()) {
-                        toast.error($i18n.t('Share something with the community before posting.'));
-                        return;
-                }
-
-                const token = ensureToken();
-                if (!token) {
-                        toast.error($i18n.t('You need to sign in to use the community.'));
-                        return;
-                }
-
-                creatingPost = true;
-                try {
-                        const post = await createCommunityPost(token, {
-                                title: newPostTitle ? newPostTitle : null,
-                                content: newPostContent
-                        });
-
-                        posts = [post, ...posts];
-                        totalPosts += 1;
-                        resetCommentState(post.id);
-
-                        newPostTitle = '';
-                        newPostContent = '';
-
-                        toast.success($i18n.t('Post created successfully.'));
-                } catch (error) {
-                        console.error(error);
-                        toast.error(
-                                typeof error === 'string' ? error : $i18n.t('Failed to create post.')
-                        );
-                } finally {
-                        creatingPost = false;
-                }
-        };
 
         const toggleComments = async (postId: string) => {
                 const state = commentState[postId];
@@ -196,8 +169,6 @@
                 const token = ensureToken();
                 if (!token) {
                         toast.error($i18n.t('You need to sign in to use the community.'));
-                        state.loading = false;
-                        commentState = { ...commentState };
                         return;
                 }
 
@@ -243,7 +214,6 @@
                 try {
                         await deleteCommunityComment(token, postId, commentId);
                         state.comments = state.comments.filter((comment) => comment.id !== commentId);
-
                         posts = posts.map((post) =>
                                 post.id === postId
                                         ? {
@@ -252,7 +222,6 @@
                                           }
                                         : post
                         );
-
                         commentState = { ...commentState };
                         toast.success($i18n.t('Comment deleted.'));
                 } catch (error) {
@@ -292,8 +261,12 @@
                 }
         };
 
-        const toggleFollow = async (post: CommunityPost) => {
-                if (!post.author || post.user_id === $user?.id) {
+        const toggleFollow = async () => {
+                if (!profile) {
+                        return;
+                }
+
+                if (profile.user.id === $user?.id) {
                         return;
                 }
 
@@ -303,35 +276,37 @@
                         return;
                 }
 
-                const isFollowing = post.viewer_is_following_author;
+                const isFollowing = profile.viewer_is_following;
 
                 try {
-                        if (isFollowing) {
-                                await unfollowCommunityUser(token, post.user_id);
-                        } else {
-                                await followCommunityUser(token, post.user_id);
-                        }
+                        const response = isFollowing
+                                ? await unfollowCommunityUser(token, profile.user.id)
+                                : await followCommunityUser(token, profile.user.id);
 
-                        posts = posts.map((item) =>
-                                item.id === post.id
-                                        ? { ...item, viewer_is_following_author: !item.viewer_is_following_author }
-                                        : item
-                        );
+                        profile = {
+                                ...profile,
+                                viewer_is_following: response.following,
+                                follower_count: response.follower_count
+                        };
+
+                        posts = posts.map((post) => ({
+                                ...post,
+                                viewer_is_following_author: response.following
+                        }));
+
                         toast.success(
-                                isFollowing
-                                        ? $i18n.t('Unfollowed {{name}}', { name: post.author.name })
-                                        : $i18n.t('Following {{name}}', { name: post.author.name })
+                                response.following
+                                        ? $i18n.t('Following {{name}}', { name: profile.user.name })
+                                        : $i18n.t('Unfollowed {{name}}', { name: profile.user.name })
                         );
                 } catch (error) {
                         console.error(error);
                         toast.error(
-                                typeof error === 'string' ? error : $i18n.t('Failed to update follow status.')
+                                typeof error === 'string'
+                                        ? error
+                                        : $i18n.t('Failed to update follow status.')
                         );
                 }
-        };
-
-        const openUserPage = (post: CommunityPost) => {
-                goto(`/community/${post.user_id}`);
         };
 
         const loadMore = async () => {
@@ -340,44 +315,25 @@
                 }
 
                 const nextPage = page + 1;
-                const token = ensureToken();
-                if (!token) {
-                        toast.error($i18n.t('You need to sign in to use the community.'));
-                        return;
-                }
+                await loadUserPage(nextPage);
+        };
 
-                loading = true;
-                try {
-                        const feed = await getCommunityFeed(token, { page: nextPage, limit: PAGE_SIZE });
-                        posts = [...posts, ...feed.posts];
-                        totalPosts = feed.total;
-                        page = nextPage;
-
-                        for (const post of feed.posts) {
-                                if (!commentState[post.id]) {
-                                        resetCommentState(post.id);
-                                }
-                        }
-                } catch (error) {
-                        console.error(error);
-                        toast.error(
-                                typeof error === 'string' ? error : $i18n.t('Failed to load community posts.')
-                        );
-                } finally {
-                        loading = false;
-                }
+        const goBack = () => {
+                goto('/community');
         };
 </script>
 
 <div
-        class=" flex flex-col w-full h-screen max-h-[100dvh] transition-width duration-200 ease-in-out {$showSidebar
-                ? 'md:max-w-[calc(100%-260px)]'
-                : ''} max-w-full"
+        class={`flex flex-col w-full h-screen max-h-[100dvh] transition-width duration-200 ease-in-out ${
+                $showSidebar ? 'md:max-w-[calc(100%-260px)]' : ''
+        } max-w-full`}
 >
         <nav class=" px-2 pt-1.5 backdrop-blur-xl w-full drag-region">
                 <div class=" flex items-center">
                         {#if $mobile}
-                                <div class="{$showSidebar ? 'md:hidden' : ''} flex flex-none items-center">
+                                <div
+                                        class={`flex flex-none items-center ${$showSidebar ? 'md:hidden' : ''}`}
+                                >
                                         <Tooltip
                                                 content={$showSidebar ? $i18n.t('Close Sidebar') : $i18n.t('Open Sidebar')}
                                                 interactive={true}
@@ -398,12 +354,19 @@
                         {/if}
 
                         <div class="ml-2 py-0.5 self-center flex items-center justify-between w-full">
-                                <div class="">
-                                        <div class="flex gap-1 text-center text-sm font-medium bg-transparent py-1">
-                                                <a class="min-w-fit transition" href="/community">
-                                                        {$i18n.t('Community')}
-                                                </a>
-                                        </div>
+                                <div class=" flex items-center gap-2">
+                                        <button
+                                                class=" text-xs text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
+                                                on:click={goBack}
+                                        >
+                                                {$i18n.t('Back to Community')}
+                                        </button>
+                                        {#if profile}
+                                                <span class=" text-sm text-gray-400">/</span>
+                                                <span class=" text-sm font-medium text-gray-700 dark:text-gray-200">
+                                                        {profile.user.name}
+                                                </span>
+                                        {/if}
                                 </div>
 
                                 <div class=" self-center flex items-center gap-1">
@@ -440,35 +403,46 @@
 
         <div class=" pb-1 flex-1 max-h-full overflow-y-auto">
                 <div class=" max-w-3xl mx-auto px-4 pb-10 pt-4 flex flex-col gap-4">
-                        <section class=" bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm p-4 space-y-3">
-                                <h2 class=" text-lg font-semibold text-gray-900 dark:text-gray-100">
-                                        {$i18n.t('Share with the community')}
-                                </h2>
-                                <input
-                                        class=" w-full rounded-xl border border-gray-200 dark:border-gray-800 bg-transparent px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        type="text"
-                                        placeholder={$i18n.t('Title (optional)')}
-                                        bind:value={newPostTitle}
-                                        maxlength={120}
-                                />
-                                <textarea
-                                        class=" w-full min-h-32 rounded-xl border border-gray-200 dark:border-gray-800 bg-transparent px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        placeholder={$i18n.t('Tell everyone about your latest prompt, workflow, or idea...')}
-                                        bind:value={newPostContent}
-                                />
-                                <div class=" flex justify-end">
-                                        <button
-                                                class=" flex items-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 transition disabled:opacity-60"
-                                                on:click={submitPost}
-                                                disabled={creatingPost}
-                                        >
-                                                {#if creatingPost}
-                                                        <Spinner className="size-4" />
+                        {#if profile}
+                                <section class=" bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm p-5 flex flex-col gap-4">
+                                        <div class=" flex items-start gap-4">
+                                                <img
+                                                        src={profile.user.profile_image_url ?? '/user.png'}
+                                                        alt={profile.user.name}
+                                                        class=" size-16 rounded-full object-cover"
+                                                />
+                                                <div class=" flex-1">
+                                                        <h1 class=" text-xl font-semibold text-gray-900 dark:text-gray-100">
+                                                                {profile.user.name}
+                                                        </h1>
+                                                        <div class=" text-sm text-gray-500 dark:text-gray-400">
+                                                                {profile.user.email}
+                                                        </div>
+                                                        <div class=" flex gap-4 text-sm text-gray-600 dark:text-gray-300 mt-2">
+                                                                <span>
+                                                                        <strong>{profile.follower_count}</strong>
+                                                                        <span class=" ml-1">{$i18n.t('Followers')}</span>
+                                                                </span>
+                                                                <span>
+                                                                        <strong>{profile.following_count}</strong>
+                                                                        <span class=" ml-1">{$i18n.t('Following')}</span>
+                                                                </span>
+                                                        </div>
+                                                </div>
+
+                                                {#if profile.user.id !== $user?.id}
+                                                        <button
+                                                                class=" rounded-xl px-4 py-2 text-sm font-medium border border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+                                                                on:click={toggleFollow}
+                                                        >
+                                                                {profile.viewer_is_following
+                                                                        ? $i18n.t('Following')
+                                                                        : $i18n.t('Follow')}
+                                                        </button>
                                                 {/if}
-                                                <span>{$i18n.t('Post')}</span>
-                                        </button>
-                                </div>
-                        </section>
+                                        </div>
+                                </section>
+                        {/if}
 
                         {#if loading && posts.length === 0}
                                 <div class=" flex justify-center py-10">
@@ -476,14 +450,14 @@
                                 </div>
                         {:else if posts.length === 0}
                                 <div class=" text-center text-sm text-gray-500 dark:text-gray-400 py-10">
-                                        {$i18n.t('No community posts yet. Be the first to share!')}
+                                        {$i18n.t('No posts from this user yet.')}
                                 </div>
                         {/if}
 
                         {#each posts as post (post.id)}
                                 <article class=" bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm p-4 space-y-4">
                                         <header class=" flex justify-between items-start gap-2">
-                                                <div class=" flex gap-3 cursor-pointer" on:click={() => openUserPage(post)}>
+                                                <div class=" flex gap-3">
                                                         <img
                                                                 src={post.author?.profile_image_url ?? '/user.png'}
                                                                 alt={post.author?.name ?? 'User avatar'}
@@ -498,24 +472,6 @@
                                                                 </div>
                                                         </div>
                                                 </div>
-
-                                                {#if post.author && post.user_id !== $user?.id}
-                                                        <button
-                                                                class=" flex items-center gap-1 rounded-xl border border-gray-200 dark:border-gray-800 px-3 py-1 text-xs font-medium hover:bg-gray-100 dark:hover:bg-gray-800 transition"
-                                                                on:click={() => toggleFollow(post)}
-                                                        >
-                                                                <UserPlusSolid className={`size-4 ${
-                                                                        post.viewer_is_following_author
-                                                                                ? 'text-blue-600'
-                                                                                : 'text-gray-500 dark:text-gray-400'
-                                                                }`} />
-                                                                <span>
-                                                                        {post.viewer_is_following_author
-                                                                                ? $i18n.t('Following')
-                                                                                : $i18n.t('Follow')}
-                                                                </span>
-                                                        </button>
-                                                {/if}
                                         </header>
 
                                         {#if post.title}
@@ -534,9 +490,7 @@
                                                         on:click={() => toggleLike(post)}
                                                 >
                                                         <Heart className={`size-4 ${
-                                                                post.viewer_has_liked
-                                                                        ? 'text-red-500'
-                                                                        : 'text-gray-500'
+                                                                post.viewer_has_liked ? 'text-red-500' : 'text-gray-500'
                                                         }`} />
                                                         <span>{post.like_count}</span>
                                                 </button>
