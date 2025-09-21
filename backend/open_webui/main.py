@@ -87,6 +87,7 @@ from open_webui.routers import (
     users,
     utils,
     scim,
+    community,
 )
 
 from open_webui.routers.retrieval import (
@@ -1244,6 +1245,7 @@ app.include_router(users.router, prefix="/api/v1/users", tags=["users"])
 app.include_router(channels.router, prefix="/api/v1/channels", tags=["channels"])
 app.include_router(chats.router, prefix="/api/v1/chats", tags=["chats"])
 app.include_router(notes.router, prefix="/api/v1/notes", tags=["notes"])
+app.include_router(community.router, prefix="/api/v1", tags=["community"])
 
 
 app.include_router(models.router, prefix="/api/v1/models", tags=["models"])
