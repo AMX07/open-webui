@@ -60,7 +60,8 @@
 	import FolderModal from './Sidebar/Folders/FolderModal.svelte';
 	import Sidebar from '../icons/Sidebar.svelte';
 	import PinnedModelList from './Sidebar/PinnedModelList.svelte';
-	import Note from '../icons/Note.svelte';
+        import Note from '../icons/Note.svelte';
+        import UsersSolid from '../icons/UsersSolid.svelte';
 	import { slide } from 'svelte/transition';
 
 	const BREAKPOINT = 768;
@@ -611,13 +612,37 @@
 								</div>
 							</a>
 						</Tooltip>
-					</div>
-				{/if}
+                                </div>
+                        {/if}
 
-				{#if $user?.role === 'admin' || $user?.permissions?.workspace?.models || $user?.permissions?.workspace?.knowledge || $user?.permissions?.workspace?.prompts || $user?.permissions?.workspace?.tools}
-					<div class="">
-						<Tooltip content={$i18n.t('Workspace')} placement="right">
-							<a
+                        {#if $config?.features?.enable_community_sharing}
+                                <div class="">
+                                        <Tooltip content={$i18n.t('Community')} placement="right">
+                                                <a
+                                                        class=" cursor-pointer flex rounded-lg hover:bg-gray-100 dark:hover:bg-gray-850 transition group"
+                                                        href="/community"
+                                                        on:click={async (e) => {
+                                                                e.stopImmediatePropagation();
+                                                                e.preventDefault();
+
+                                                                goto('/community');
+                                                                itemClickHandler();
+                                                        }}
+                                                        draggable="false"
+                                                        aria-label={$i18n.t('Community')}
+                                                >
+                                                        <div class=" self-center flex items-center justify-center size-9">
+                                                                <UsersSolid className="size-4.5" />
+                                                        </div>
+                                                </a>
+                                        </Tooltip>
+                                </div>
+                        {/if}
+
+                        {#if $user?.role === 'admin' || $user?.permissions?.workspace?.models || $user?.permissions?.workspace?.knowledge || $user?.permissions?.workspace?.prompts || $user?.permissions?.workspace?.tools}
+                                <div class="">
+                                        <Tooltip content={$i18n.t('Workspace')} placement="right">
+                                                <a
 								class=" cursor-pointer flex rounded-lg hover:bg-gray-100 dark:hover:bg-gray-850 transition group"
 								href="/workspace"
 								on:click={async (e) => {
@@ -782,32 +807,52 @@
 							<div class=" self-center text-sm font-primary">{$i18n.t('Search')}</div>
 						</div>
 					</button>
-				</div>
+                                </div>
 
-				{#if ($config?.features?.enable_notes ?? false) && ($user?.role === 'admin' || ($user?.permissions?.features?.notes ?? true))}
-					<div class="px-[7px] flex justify-center text-gray-800 dark:text-gray-200">
-						<a
-							class="grow flex items-center space-x-3 rounded-lg px-2 py-2 hover:bg-gray-100 dark:hover:bg-gray-900 transition"
-							href="/notes"
-							on:click={itemClickHandler}
-							draggable="false"
-							aria-label={$i18n.t('Notes')}
-						>
-							<div class="self-center">
-								<Note className="size-4.5" strokeWidth="2" />
-							</div>
+                                {#if ($config?.features?.enable_notes ?? false) && ($user?.role === 'admin' || ($user?.permissions?.features?.notes ?? true))}
+                                        <div class="px-[7px] flex justify-center text-gray-800 dark:text-gray-200">
+                                                <a
+                                                        class="grow flex items-center space-x-3 rounded-lg px-2 py-2 hover:bg-gray-100 dark:hover:bg-gray-900 transition"
+                                                        href="/notes"
+                                                        on:click={itemClickHandler}
+                                                        draggable="false"
+                                                        aria-label={$i18n.t('Notes')}
+                                                >
+                                                        <div class="self-center">
+                                                                <Note className="size-4.5" strokeWidth="2" />
+                                                        </div>
 
-							<div class="flex self-center translate-y-[0.5px]">
-								<div class=" self-center text-sm font-primary">{$i18n.t('Notes')}</div>
-							</div>
-						</a>
-					</div>
-				{/if}
+                                                        <div class="flex self-center translate-y-[0.5px]">
+                                                                <div class=" self-center text-sm font-primary">{$i18n.t('Notes')}</div>
+                                                        </div>
+                                                </a>
+                                        </div>
+                                {/if}
 
-				{#if $user?.role === 'admin' || $user?.permissions?.workspace?.models || $user?.permissions?.workspace?.knowledge || $user?.permissions?.workspace?.prompts || $user?.permissions?.workspace?.tools}
-					<div class="px-[7px] flex justify-center text-gray-800 dark:text-gray-200">
-						<a
-							class="grow flex items-center space-x-3 rounded-lg px-2 py-2 hover:bg-gray-100 dark:hover:bg-gray-900 transition"
+                                {#if $config?.features?.enable_community_sharing}
+                                        <div class="px-[7px] flex justify-center text-gray-800 dark:text-gray-200">
+                                                <a
+                                                        class="grow flex items-center space-x-3 rounded-lg px-2 py-2 hover:bg-gray-100 dark:hover:bg-gray-900 transition"
+                                                        href="/community"
+                                                        on:click={itemClickHandler}
+                                                        draggable="false"
+                                                        aria-label={$i18n.t('Community')}
+                                                >
+                                                        <div class="self-center">
+                                                                <UsersSolid className="size-4.5" />
+                                                        </div>
+
+                                                        <div class="flex self-center translate-y-[0.5px]">
+                                                                <div class=" self-center text-sm font-primary">{$i18n.t('Community')}</div>
+                                                        </div>
+                                                </a>
+                                        </div>
+                                {/if}
+
+                                {#if $user?.role === 'admin' || $user?.permissions?.workspace?.models || $user?.permissions?.workspace?.knowledge || $user?.permissions?.workspace?.prompts || $user?.permissions?.workspace?.tools}
+                                        <div class="px-[7px] flex justify-center text-gray-800 dark:text-gray-200">
+                                                <a
+                                                        class="grow flex items-center space-x-3 rounded-lg px-2 py-2 hover:bg-gray-100 dark:hover:bg-gray-900 transition"
 							href="/workspace"
 							on:click={itemClickHandler}
 							draggable="false"
