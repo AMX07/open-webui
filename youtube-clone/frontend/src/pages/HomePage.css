@@ -1,0 +1,39 @@
+.home {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.trending {
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.home__results {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.home__results-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.home__results-subtitle {
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+.home__loading,
+.home__empty,
+.home__error {
+  color: #64748b;
+  font-size: 0.95rem;
+}
+
+.home__error {
+  color: #dc2626;
+}

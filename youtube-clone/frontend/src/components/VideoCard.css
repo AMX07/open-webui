@@ -1,0 +1,78 @@
+.video-card {
+  display: flex;
+  flex-direction: column;
+  background-color: rgba(255, 255, 255, 0.9);
+  border-radius: 1rem;
+  overflow: hidden;
+  box-shadow: 0 18px 45px -25px rgba(15, 23, 42, 0.45);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.video-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 50px -20px rgba(59, 130, 246, 0.35);
+}
+
+.video-card__thumbnail {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  background: #cbd5f5;
+}
+
+.video-card__thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.video-card__duration {
+  position: absolute;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 0.5rem;
+  background-color: rgba(15, 23, 42, 0.8);
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.video-card__meta {
+  display: flex;
+  gap: 0.75rem;
+  padding: 1rem 1.1rem 1.25rem;
+}
+
+.video-card__avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.15);
+}
+
+.video-card__details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.video-card__title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #0f172a;
+  margin: 0;
+}
+
+.video-card__channel {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #475569;
+}
+
+.video-card__stats {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #64748b;
+}
