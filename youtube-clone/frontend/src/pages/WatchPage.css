@@ -1,0 +1,163 @@
+.watch {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 2rem;
+  align-items: start;
+}
+
+.watch__player {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.watch__video {
+  background-color: #0f172a;
+  border-radius: 1.2rem;
+  overflow: hidden;
+  box-shadow: 0 25px 60px -30px rgba(15, 23, 42, 0.6);
+}
+
+.watch__video video {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.watch__details {
+  background-color: rgba(255, 255, 255, 0.85);
+  padding: 1.5rem;
+  border-radius: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.watch__title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.watch__meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.watch__channel {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.watch__channel img {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.25);
+}
+
+.watch__channel h3 {
+  margin: 0;
+  font-size: 1rem;
+  color: #1f2937;
+}
+
+.watch__channel p {
+  margin: 0.25rem 0 0;
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+.watch__stats {
+  display: flex;
+  gap: 1rem;
+  color: #475569;
+  font-size: 0.9rem;
+}
+
+.watch__description {
+  margin: 0;
+  color: #334155;
+  line-height: 1.6;
+}
+
+.watch__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.watch__tag {
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  background-color: rgba(37, 99, 235, 0.12);
+  color: #1d4ed8;
+  font-size: 0.85rem;
+}
+
+.watch__comments {
+  background-color: rgba(255, 255, 255, 0.85);
+  padding: 1.5rem;
+  border-radius: 1rem;
+  box-shadow: inset 0 1px 0 rgba(148, 163, 184, 0.12);
+}
+
+.watch__comments h2,
+.watch__related h2 {
+  margin: 0 0 1rem;
+  font-size: 1.1rem;
+  color: #0f172a;
+}
+
+.watch__related {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.watch__related-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.watch__related-empty {
+  color: #64748b;
+}
+
+.watch__status {
+  margin: 4rem auto;
+  text-align: center;
+  font-size: 1.1rem;
+  color: #475569;
+}
+
+.watch__status--error {
+  color: #dc2626;
+}
+
+@media (max-width: 1100px) {
+  .watch {
+    grid-template-columns: 1fr;
+  }
+
+  .watch__related {
+    order: -1;
+  }
+}
+
+@media (max-width: 768px) {
+  .watch__meta {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .watch__video {
+    border-radius: 1rem;
+  }
+}
